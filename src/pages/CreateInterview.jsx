@@ -203,30 +203,41 @@ export default function CreateInterview() {
   return (
     <main className="flex-1 overflow-auto pt-10 pb-6 px-6 h-screen">
       <header className="flex justify-between items-center mb-8">
-        {isEditingTitle ? (
-          <Input
-          ref={titleInputRef}
-          value={draft.title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={handleTitleKeyDown}
-          onBlur={() => setIsEditingTitle(false)}
-          placeholder={defaultTitle}
-          className="text-2xl font-semibold text-gray-900 rounded border-gray-300 focus:ring-0 focus:border-gray-400 px-2 max-w-md"
-          style={{ boxShadow: 'none', outline: 'none' }}
-        />
-        ) : (
-          <h1 
-            className="text-2xl font-semibold text-gray-900 cursor-pointer hover:text-gray-700 transition-colors"
-            onClick={handleTitleClick}
-          >
-            {displayTitle}
-          </h1>
-        )}
-        <div className="flex items-center">
-          <span className="text-sm font-medium text-gray-700 mr-2">AI Mode</span>
-          <Switch id="ai-mode" checked={draft.isAIMode} onCheckedChange={setAIMode} />
-        </div>
-      </header>
+  {isEditingTitle ? (
+    <Input
+      ref={titleInputRef}
+      value={draft.title}
+      onChange={(e) => setTitle(e.target.value)}
+      onKeyDown={handleTitleKeyDown}
+      onBlur={() => setIsEditingTitle(false)}
+      placeholder={defaultTitle}
+      className="text-2xl font-semibold text-gray-900 rounded border-gray-300 focus:ring-0 focus:border-gray-400 px-2 max-w-md"
+      style={{ boxShadow: 'none', outline: 'none' }}
+    />
+  ) : (
+    <h1 
+      className="text-2xl font-semibold text-gray-900 cursor-pointer hover:text-gray-700 transition-colors"
+      onClick={handleTitleClick}
+    >
+      {displayTitle}
+    </h1>
+  )}
+  
+  <div className="flex items-center gap-4">
+    {isEditMode && (
+      <Button
+        variant="outline"
+        onClick={() => navigate('/interview/responses')}
+      >
+        View Responses
+      </Button>
+    )}
+    <div className="flex items-center">
+      <span className="text-sm font-medium text-gray-700 mr-2">AI Mode</span>
+      <Switch id="ai-mode" checked={draft.isAIMode} onCheckedChange={setAIMode} />
+    </div>
+  </div>
+</header>
 
       {draft.isAIMode ? (
         <div className="flex flex-col md:flex-row gap-3 h-[calc(100vh-120px)]">

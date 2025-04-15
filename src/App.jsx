@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import CreateInterview from "./pages/CreateInterview";
 import Sidebar from "./components/Sidebar";
 import InterviewSession from "./pages/InterviewSession";
+import InterviewResponses from "./pages/InterviewResponses";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
           <Route path="/create" component={CreateInterview} />
           <Route path="/edit/:id" component={CreateInterview} />
           <Route path="/interview" component={InterviewSession}/>
+          <Route path="/interview/responses" component={InterviewResponses} />
           <Route component={NotFound} />
         </Switch>
       </div>

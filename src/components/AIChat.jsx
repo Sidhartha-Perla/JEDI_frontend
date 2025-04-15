@@ -4,17 +4,21 @@ import { UserCircle, ArrowUp } from 'lucide-react';
 import { useInterviewStore } from '../store/interviewStore';
 import { apiRequest } from '../lib/queryClient';
 
-export default function AIChat({ onUpdateDraft }) {
+
+export default function AIChat({ onUpdateDraft, readOnly = false, messages: initialMessages = [] }) {
   const { messages, addUserMessage, addAIMessage, draft } = useInterviewStore();
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Use passed messages if in readOnly mode, otherwise use store messages
+  const displayMessages = readOnly ? initialMessages : messages;
+
   useEffect(() => {
-    if (messages.length === 0) {
+    if (!readOnly && displayMessages.length === 0) {
       addAIMessage("Hello! I will help you create a user interview. What is the goal of your interview?");
     }
-  }, [messages.length, addAIMessage]);
+  }, [readOnly, displayMessages.length, addAIMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -59,7 +63,7 @@ export default function AIChat({ onUpdateDraft }) {
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-gray-300 p-6">
       <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-        {messages.map((message, index) => (
+        {displayMessages.map((message, index) => (
           <div 
             key={index} 
             className={`flex items-start gap-3 ${message.isUser ? 'justify-end' : ''}`}
@@ -95,26 +99,28 @@ export default function AIChat({ onUpdateDraft }) {
         <div ref={messagesEndRef}></div>
       </div>
 
+      {!readOnly && ( // Conditional rendering of the input area
       <div className="border-t border-gray-200 pt-4 mt-auto">
-      <div className="relative">
-            <textarea
-              value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none pr-14"
-              placeholder="Type your message..."
-              rows={3}
-            />
-            <Button 
-              className="absolute right-3 bottom-3 bg-blue-500 hover:bg-blue-600 text-white h-10 w-10 rounded-full p-0 flex items-center justify-center"
-              onClick={handleSendMessage}
-              disabled={!userInput.trim() || isLoading}
-              aria-label="Send message"
-            >
-              <ArrowUp className="h-5 w-5" />
-            </Button>
-          </div>
+        <div className="relative">
+          <textarea
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none pr-14"
+            placeholder="Type your message..."
+            rows={3}
+          />
+          <Button 
+            className="absolute right-3 bottom-3 bg-blue-500 hover:bg-blue-600 text-white h-10 w-10 rounded-full p-0 flex items-center justify-center"
+            onClick={handleSendMessage}
+            disabled={!userInput.trim() || isLoading}
+            aria-label="Send message"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
+      )}
     </div>
   );
 }
