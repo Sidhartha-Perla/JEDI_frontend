@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Badge } from './ui/badge';
@@ -5,6 +6,15 @@ import { Button } from './ui/button';
 import { Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useInterviewStore } from '../store/interviewStore';
 import { useState } from 'react';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "./ui/pagination";
 
 const statusColorMap = {
   draft: 'bg-gray-100 text-gray-800',
@@ -12,17 +22,18 @@ const statusColorMap = {
   completed: 'bg-green-100 text-green-800'
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export default function InterviewTable() {
   const [, navigate] = useLocation();
   const { filters } = useInterviewStore();
+  const [currentPage, setCurrentPage] = useState(1);
   
-  // Add sorting state
   const [sortConfig, setSortConfig] = useState({
     key: 'created_date',
     direction: 'desc'
   });
   
-  // Add hover state for column headers
   const [hoveredColumn, setHoveredColumn] = useState(null);
   
   const { data: interviews, isLoading, error } = useQuery({
@@ -35,7 +46,6 @@ export default function InterviewTable() {
     }
   });
 
-  // Function to handle sorting
   const requestSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -44,11 +54,9 @@ export default function InterviewTable() {
     setSortConfig({ key, direction });
   };
 
-  // Apply filters and sorting to interviews
   const getSortedInterviews = () => {
     if (!interviews) return [];
     
-    // First apply search filter
     let filteredData = interviews.filter((interview) => {
       if (!filters.search) return true;
       const searchTerm = filters.search.toLowerCase();
@@ -58,7 +66,6 @@ export default function InterviewTable() {
       );
     });
     
-    // Then apply sorting
     return [...filteredData].sort((a, b) => {
       if (sortConfig.key === 'title') {
         return sortConfig.direction === 'asc' 
@@ -85,15 +92,18 @@ export default function InterviewTable() {
   };
 
   const sortedInterviews = getSortedInterviews();
+  const totalPages = Math.ceil(sortedInterviews.length / ITEMS_PER_PAGE);
+  const paginatedInterviews = sortedInterviews.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const handleRowClick = (interviewId) => {
     navigate(`/edit/${interviewId}`);
   };
 
   const handleDeleteClick = (e, interviewId) => {
-    // Prevent row click event from triggering
     e.stopPropagation();
-    // Currently does nothing as per requirements
     console.log('Delete clicked for interview:', interviewId);
   };
 
@@ -121,7 +131,6 @@ export default function InterviewTable() {
     );
   }
 
-  // Helper to render sort icon
   const renderSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) {
       return <ChevronUp className="h-4 w-4 opacity-0 group-hover:opacity-50" />;
@@ -132,7 +141,6 @@ export default function InterviewTable() {
       : <ChevronDown className="h-4 w-4" />;
   };
 
-  // Header component for sortable columns
   const SortableHeader = ({ columnKey, title, colSpan }) => (
     <div 
       className={`col-span-${colSpan} group flex items-center gap-1 cursor-pointer`}
@@ -148,8 +156,8 @@ export default function InterviewTable() {
   );
 
   return (
-    <div className="bg-white rounded-2xl shadow overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-2xl shadow overflow-hidden flex flex-col">
+      <div className="overflow-x-auto flex-1">
         <div className="min-w-full">
           <div className="bg-gray-50 sticky top-0 z-10 px-6 py-4 rounded-t-xl">
             <div className="grid grid-cols-12 gap-4 font-medium text-gray-700">
@@ -162,8 +170,8 @@ export default function InterviewTable() {
             </div>
           </div>
 
-          <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
-            {sortedInterviews.map((interview) => (
+          <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
+            {paginatedInterviews.map((interview) => (
               <div
                 key={interview.id}
                 className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 border-t border-gray-100 cursor-pointer"
@@ -196,6 +204,37 @@ export default function InterviewTable() {
             ))}
           </div>
         </div>
+      </div>
+      
+      <div className="border-t border-gray-200 p-4">
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              />
+            </PaginationItem>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  onClick={() => setCurrentPage(page)}
+                  isActive={currentPage === page}
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
     </div>
   );

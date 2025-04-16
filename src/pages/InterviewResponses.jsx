@@ -1,12 +1,21 @@
 
 import { useState } from 'react';
-import { useParams } from 'wouter';
+import { useParams, useLocation } from 'wouter';
 import { Badge } from '../components/ui/badge';
 import { Card } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Button } from '../components/ui/button';
+import { ChevronLeft } from 'lucide-react';
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from '../components/ui/pagination';
 import AIChat from '../components/AIChat';
 
-// Mock data
+// Mock data (same as before)
 const mockResponses = [
   {
     id: 1,
@@ -14,6 +23,14 @@ const mockResponses = [
     summary: "Overall positive feedback about the product. User highlighted the ease of use and suggested improvements in documentation.",
     tags: ["Positive", "Documentation", "UX"],
     messages: [
+      { content: "How satisfied are you with our product?", isUser: false },
+      { content: "I'm very satisfied! The interface is intuitive.", isUser: true },
+      { content: "What features do you use most often?", isUser: false },
+      { content: "I mainly use the dashboard and reporting features.", isUser: true },
+      { content: "How satisfied are you with our product?", isUser: false },
+      { content: "I'm very satisfied! The interface is intuitive.", isUser: true },
+      { content: "What features do you use most often?", isUser: false },
+      { content: "I mainly use the dashboard and reporting features.", isUser: true },
       { content: "How satisfied are you with our product?", isUser: false },
       { content: "I'm very satisfied! The interface is intuitive.", isUser: true },
       { content: "What features do you use most often?", isUser: false },
@@ -31,19 +48,119 @@ const mockResponses = [
       { content: "Could you elaborate on the performance issues?", isUser: false },
       { content: "The system sometimes lags during peak hours.", isUser: true }
     ]
-  }
+  },
+
 ];
 
-const allTags = Array.from(new Set(mockResponses.flatMap(r => r.tags)));
+const ITEMS_PER_PAGE = 10;
+
+function ResponseList({ responses, onSelectResponse }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(responses.length / ITEMS_PER_PAGE);
+
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedResponses = responses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  return (
+    <div className="space-y-6">
+      <div className="space-y-4">
+        {paginatedResponses.map(response => (
+          <Card
+            key={response.id}
+            className="p-4 cursor-pointer hover:border-blue-200 transition-colors"
+            onClick={() => onSelectResponse(response.id)}
+          >
+            <div className="font-medium mb-2">{response.user}</div>
+            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+              {response.summary}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {response.tags.map(tag => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <Pagination className="mt-6">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              />
+            </PaginationItem>
+            {[...Array(totalPages)].map((_, i) => (
+              <PaginationItem key={i}>
+                <PaginationLink
+                  onClick={() => setCurrentPage(i + 1)}
+                  isActive={currentPage === i + 1}
+                >
+                  {i + 1}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+    </div>
+  );
+}
+
+function ResponseDetails({ response, onBack }) {
+  return (
+    <main className="flex-1 overflow-auto pt-10 pb-6 px-6 h-screen">
+      <Button 
+        variant="ghost" 
+        onClick={onBack}
+        className="mb-6"
+      >
+        <ChevronLeft className="h-4 w-4 -mr-1" />
+        Back to Responses
+      </Button>
+
+      <div className="grid grid-cols-12 gap-6">
+        <div className="col-span-12 md:col-span-5">
+            <h2 className="text-xl font-semibold mb-4">Response Summary</h2>
+            <div className="text-gray-600 mb-4">{response.user}</div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {response.tags.map(tag => (
+                <Badge key={tag} variant="secondary">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+            <p className="text-gray-600 mb-4">{response.summary}</p>
+        </div>
+
+        <div className="col-span-12 md:col-span-7 h-[calc(105vh-160px)]">
+          <div className="border rounded-lg p-6 h-full flex flex-col">
+            <h2 className="text-xl font-semibold mb-4">Interview Chat</h2>
+            <div className="flex-1 overflow-hidden">
+              <AIChat messages={response.messages} readOnly={true} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
 
 export default function InterviewResponses() {
   const { id } = useParams();
+  const [selectedResponseId, setSelectedResponseId] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedResponse, setSelectedResponse] = useState(null);
-
-  const filteredResponses = selectedTags.length > 0
-    ? mockResponses.filter(r => r.tags.some(t => selectedTags.includes(t)))
-    : mockResponses;
+  const [, navigate] = useLocation();
 
   const toggleTag = (tag) => {
     setSelectedTags(prev => 
@@ -53,83 +170,57 @@ export default function InterviewResponses() {
     );
   };
 
+  const filteredResponses = mockResponses.filter(response =>
+    selectedTags.length === 0 || 
+    selectedTags.some(tag => response.tags.includes(tag))
+  );
+
+  const selectedResponse = mockResponses.find(r => r.id === selectedResponseId);
+
+  if (selectedResponse) {
+    return (
+      <ResponseDetails 
+        response={selectedResponse}
+        onBack={() => setSelectedResponseId(null)}
+      />
+    );
+  }
+
   return (
     <main className="flex-1 overflow-auto pt-10 pb-6 px-6 h-screen">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <header className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">Interview Responses</h1>
           <div className="mt-2 text-gray-600">Total Responses: {mockResponses.length}</div>
-        </header>
 
-        <div className="mb-6 space-y-2">
-          <h2 className="text-lg font-medium">Filter by Tags</h2>
-          <div className="flex flex-wrap gap-2">
-            {allTags.map(tag => (
-              <Badge
-                key={tag}
-                variant={selectedTags.includes(tag) ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => toggleTag(tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        </div>
+          <div className="mt-8">
+            <h2 className="font-medium mb-2">Summary</h2>
+            <p className="text-gray-600 mb-6">
+              Based on {mockResponses.length} responses, users generally provided mixed feedback. Key themes include positive comments about the interface and customer support, with some concerns about performance and documentation needs.
+            </p>
 
-        <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-12 md:col-span-5">
-            <div className="space-y-4">
-              {filteredResponses.map(response => (
-                <Card
-                  key={response.id}
-                  className={`p-4 cursor-pointer transition-colors ${
-                    selectedResponse?.id === response.id ? 'border-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedResponse(response)}
-                >
-                  <div className="font-medium mb-2">{response.user}</div>
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                    {response.summary}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {response.tags.map(tag => (
-                      <Badge key={tag} variant="secondary" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </Card>
-              ))}
+            <div className="mt-6">
+              <h2 className="font-medium mb-2">Filter by Tags</h2>
+              <div className="flex flex-wrap gap-2">
+                {Array.from(new Set(mockResponses.flatMap(r => r.tags))).map(tag => (
+                  <Badge 
+                    key={tag}
+                    variant={selectedTags.includes(tag) ? "default" : "outline"}
+                    className="cursor-pointer "
+                    onClick={() => toggleTag(tag)}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
             </div>
           </div>
+        </header>
 
-          <div className="col-span-12 md:col-span-7">
-            {selectedResponse ? (
-              <div className="border rounded-lg p-6 space-y-6">
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Response Details</h2>
-                  <p className="text-gray-600 mb-4">{selectedResponse.summary}</p>
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {selectedResponse.tags.map(tag => (
-                      <Badge key={tag} variant="secondary">
-                        {tag}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-medium mb-4">Interview Chat</h3>
-                  <AIChat messages={selectedResponse.messages} readOnly={true} />
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                Select a response to view details
-              </div>
-            )}
-          </div>
-        </div>
+        <ResponseList 
+          responses={filteredResponses}
+          onSelectResponse={setSelectedResponseId}
+        />
       </div>
     </main>
   );
