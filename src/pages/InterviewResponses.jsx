@@ -1,10 +1,10 @@
-
 import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Badge } from '../components/ui/badge';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { ChevronLeft } from 'lucide-react';
+import useInterviewResponsesStore from '../store/InterviewResponsesStore';
 import { 
   Pagination, 
   PaginationContent, 
@@ -14,8 +14,9 @@ import {
   PaginationPrevious 
 } from '../components/ui/pagination';
 import AIChat from '../components/AIChat';
+import { useEffect } from 'react';
 
-// Mock data (same as before)
+/*
 const mockResponses = [
   {
     id: 1,
@@ -51,6 +52,7 @@ const mockResponses = [
   },
 
 ];
+*/
 
 const ITEMS_PER_PAGE = 10;
 
@@ -66,11 +68,11 @@ function ResponseList({ responses, onSelectResponse }) {
       <div className="space-y-4">
         {paginatedResponses.map(response => (
           <Card
-            key={response.id}
+            key={response.uuid}
             className="p-4 cursor-pointer hover:border-blue-200 transition-colors"
-            onClick={() => onSelectResponse(response.id)}
+            onClick={() => onSelectResponse(response)}
           >
-            <div className="font-medium mb-2">{response.user}</div>
+            <div className="font-medium mb-2">{response.uuid}</div>
             <p className="text-sm text-gray-600 line-clamp-2 mb-2">
               {response.summary}
             </p>
@@ -118,6 +120,8 @@ function ResponseList({ responses, onSelectResponse }) {
 }
 
 function ResponseDetails({ response, onBack }) {
+  const messages = useInterviewResponsesStore(state => state.currentResponseMessages);
+
   return (
     <main className="flex-1 overflow-auto pt-10 pb-6 px-6 h-screen">
       <Button 
@@ -132,7 +136,7 @@ function ResponseDetails({ response, onBack }) {
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 md:col-span-5">
             <h2 className="text-xl font-semibold mb-4">Response Summary</h2>
-            <div className="text-gray-600 mb-4">{response.user}</div>
+            <div className="text-gray-600 mb-4">{response.uuid}</div>
             <div className="flex flex-wrap gap-2 mb-2">
               {response.tags.map(tag => (
                 <Badge key={tag} variant="secondary">
@@ -147,7 +151,7 @@ function ResponseDetails({ response, onBack }) {
           <div className="border rounded-lg p-6 h-full flex flex-col">
             <h2 className="text-xl font-semibold mb-4">Interview Chat</h2>
             <div className="flex-1 overflow-hidden">
-              <AIChat messages={response.messages} readOnly={true} />
+              <AIChat type="response"/>
             </div>
           </div>
         </div>
@@ -157,31 +161,61 @@ function ResponseDetails({ response, onBack }) {
 }
 
 export default function InterviewResponses() {
-  const { id } = useParams();
+  const { uuid } = useParams();
   const [selectedResponseId, setSelectedResponseId] = useState(null);
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [, navigate] = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const toggleTag = (tag) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
+  const { initResponseDetails, setTagFilter, setMessages, resetMessages } = useInterviewResponsesStore();
+
+  const interview = useInterviewResponsesStore((state) => state.interview);
+  const interviewResponses = useInterviewResponsesStore((state) => state.interviewResponses);
+  const filters = useInterviewResponsesStore((state) => state.filters);
+  const initError = useInterviewResponsesStore(state => state.initError);
+
+  useEffect(() => {
+    const init = async () => {
+      await initResponseDetails(uuid);
+      setIsLoading(false);
+    }
+    init();
+  }, []);
+
+  const filteredResponses = interviewResponses.filter(response => !filters.tag || response.tags.includes(filters.tag));
+
+  const selectedResponse = interviewResponses.find(r => r.uuid === selectedResponseId);
+
+  const handleSelectResponse = (response) => {
+    console.log("selected response: ", response);
+    setSelectedResponseId(response.uuid);
+    setMessages(response.uuid);
+  }
+
+  const handleOnBack = () => {
+    setSelectedResponseId(null);
+    resetMessages();
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
     );
-  };
+  }
 
-  const filteredResponses = mockResponses.filter(response =>
-    selectedTags.length === 0 || 
-    selectedTags.some(tag => response.tags.includes(tag))
-  );
-
-  const selectedResponse = mockResponses.find(r => r.id === selectedResponseId);
+  if (initError) {
+    return (
+      <div className="bg-red-50 p-4 rounded-lg">
+        <p className="text-red-800">Error loading Responses</p>
+      </div>
+    );
+  }
 
   if (selectedResponse) {
     return (
       <ResponseDetails 
         response={selectedResponse}
-        onBack={() => setSelectedResponseId(null)}
+        onBack={handleOnBack}
       />
     );
   }
@@ -191,23 +225,22 @@ export default function InterviewResponses() {
       <div className="max-w-4xl mx-auto">
         <header className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">Interview Responses</h1>
-          <div className="mt-2 text-gray-600">Total Responses: {mockResponses.length}</div>
+          <div className="mt-2 text-gray-600">Total Responses: {interviewResponses.length}</div>
 
           <div className="mt-8">
             <h2 className="font-medium mb-2">Summary</h2>
             <p className="text-gray-600 mb-6">
-              Based on {mockResponses.length} responses, users generally provided mixed feedback. Key themes include positive comments about the interface and customer support, with some concerns about performance and documentation needs.
+              {interview.summary}
             </p>
 
             <div className="mt-6">
-              <h2 className="font-medium mb-2">Filter by Tags</h2>
               <div className="flex flex-wrap gap-2">
-                {Array.from(new Set(mockResponses.flatMap(r => r.tags))).map(tag => (
+                {Array.from(new Set(interviewResponses.flatMap(r => r.tags))).map(tag => (
                   <Badge 
                     key={tag}
-                    variant={selectedTags.includes(tag) ? "default" : "outline"}
-                    className="cursor-pointer "
-                    onClick={() => toggleTag(tag)}
+                    variant={filters.tag === tag ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => setTagFilter(tag)}
                   >
                     {tag}
                   </Badge>
@@ -219,7 +252,7 @@ export default function InterviewResponses() {
 
         <ResponseList 
           responses={filteredResponses}
-          onSelectResponse={setSelectedResponseId}
+          onSelectResponse={handleSelectResponse}
         />
       </div>
     </main>

@@ -9,10 +9,13 @@ const api = axios.create({
 
 export async function get({ url, params }) {
     const response = await api.get(url, { params });
+    console.log(`URL: ${url}, response: `, response);
     return response.data;
 }
 
 export async function post({ url, params, data }) {
+    console.log(data);
     const response = await api.post(url, data, { params });
+    console.log(`URL: ${url}, response: `, response);
     return response.data;
 }

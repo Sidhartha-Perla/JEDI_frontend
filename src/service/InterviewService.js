@@ -8,9 +8,9 @@ export async function getAllInterviews() {
   });
 }
 
-export async function getInterviewByUuid(id) {
+export async function getInterviewByUuid(uuid) {
   return await get({
-    url: `${BASE_URL}/get/${id}`,
+    url: `${BASE_URL}/get/${uuid}`,
   });
 }
 /*
@@ -26,6 +26,13 @@ export async function addInterview() {
   });
 }
 
+export async function updateInterview(uuid, data) {
+  return await post({
+    url: `${BASE_URL}/update/${uuid}`,
+    data
+  })
+}
+
 export async function getInterviewPlannerMessages(interviewId) {
   return await get({
     url: `${BASE_URL}/planning/${interviewId}/all`,
@@ -33,6 +40,7 @@ export async function getInterviewPlannerMessages(interviewId) {
 }
 
 export async function sendInterviewPlannerMessage({ interviewId, message }) {
+  console.log("message: ", message);
   return await post({
     url: `${BASE_URL}/planning/${interviewId}`,
     data: { message },
@@ -69,4 +77,10 @@ export async function sendUserInterviewMessage({ userInterviewUuid, message }) {
     url: `${BASE_URL}/user/${userInterviewUuid}`,
     data: { message },
   });
+}
+
+export async function getAllUserInterviewsByUuid(interviewUuid){
+  return await get({
+    url: `${BASE_URL}/user/get_all_by_interview_uuid/${interviewUuid}`
+  })
 }

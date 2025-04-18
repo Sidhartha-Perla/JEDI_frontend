@@ -1,23 +1,43 @@
+import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../hooks/use-toast';
 import { PlusIcon, SearchIcon, MenuIcon } from 'lucide-react';
 import InterviewTable from '../components/InterviewTable';
-import { useInterviewStore } from '../store/interviewStore';
+import useInterviewStore from '../store/InterviewStore';
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
-  const { filters, setSearch, setStatusFilter } = useInterviewStore();
-
+  const { toast } = useToast();
+  const { setSearch, setStatusFilter, addInterview, resetAddInterviewError } = useInterviewStore();
+  const filters = useInterviewStore((state) => state.filters);
+  const addInterviewError = useInterviewStore((state) => state.addInterviewError);
   const statusFilters = [
     { label: 'Draft', value: 'draft' },
     { label: 'Active', value: 'active' },
-    { label: 'Completed', value: 'completed' },
   ];
 
-  const handleCreateInterview = () => {
-    navigate('/create');
+  const [createLoading, setCreateLoading] = useState(false);
+
+  const handleCreateInterview = async () => {
+    setCreateLoading(true);
+    const newInterview = await addInterview();
+    setCreateLoading(false);
+    console.log(addInterviewError);
+    if(addInterviewError){
+      toast({
+        title: 'Error',
+        description: `Failed to create new interview`,
+        variant: 'destructive',
+      });
+      resetAddInterviewError();
+    }
+    else{
+      navigate(`/interview/${newInterview.uuid}`);
+    }
+    
   };
 
   return (
@@ -33,10 +53,17 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <Button
           onClick={handleCreateInterview}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-xl flex items-center justify-center transition duration-150"
+          disabled={createLoading}
+          className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white font-medium py-2 px-4 rounded-xl flex items-center justify-center transition duration-150 min-w-[200px]"
         >
-          <PlusIcon className="h-5 w-5 mr-1" />
-          Create New Interview
+          {createLoading ? (
+            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              <PlusIcon className="h-5 w-5 mr-1" />
+              Create New Interview
+            </>
+          )}
         </Button>
 
         {/* Search Bar */}
