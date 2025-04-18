@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useParams } from 'wouter';
+import { ArrowLeft } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -146,24 +147,34 @@ export default function InterviewPlanning() {
   return (
     <main className="flex-1 overflow-auto pt-10 pb-6 px-6 h-screen">
       <header className="flex justify-between items-center mb-8">
-        {isEditingTitle ? (
-          <Input
-            ref={titleInputRef}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={handleTitleKeyDown}
-            onBlur={() => setIsEditingTitle(false)}
-            className="text-2xl font-semibold text-gray-900 rounded border-gray-300 focus:ring-0 focus:border-gray-400 px-2 max-w-md"
-            style={{ boxShadow: 'none', outline: 'none' }}
-          />
-        ) : (
-          <h1 
-            className="text-2xl font-semibold text-gray-900 cursor-pointer hover:text-gray-700 transition-colors"
-            onClick={handleTitleClick}
-          >
-            {interviewDetails?.title ?? ''}
-          </h1>
-        )}
+      <div className="flex items-center gap-2">
+        <div
+          onClick={() => navigate('/')}
+          className="flex items-center gap-1 cursor-pointer mr-4"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-base font-medium">Back</span>
+        </div>
+
+    {isEditingTitle ? (
+      <Input
+        ref={titleInputRef}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={handleTitleKeyDown}
+        onBlur={() => setIsEditingTitle(false)}
+        className="text-2xl font-semibold text-gray-900 rounded border-gray-300 focus:ring-0 focus:border-gray-400 px-2 max-w-md"
+        style={{ boxShadow: 'none', outline: 'none' }}
+      />
+    ) : (
+      <h1
+        className="text-2xl font-semibold text-gray-900 cursor-pointer hover:text-gray-700 transition-colors"
+        onClick={handleTitleClick}
+      >
+        {interviewDetails?.title ?? ''}
+      </h1>
+    )}
+  </div>
         
         <div className="flex items-center gap-4">
             <Button

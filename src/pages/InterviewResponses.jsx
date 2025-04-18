@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'wouter';
+import { ArrowLeft } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { ChevronLeft } from 'lucide-react';
@@ -87,14 +88,14 @@ function ResponseDetails({ response, onBack }) {
 
   return (
     <main className="flex-1 overflow-auto pt-10 pb-6 px-6 h-screen">
-      <Button 
-        variant="ghost" 
-        onClick={onBack}
-        className="mb-6"
-      >
-        <ChevronLeft className="h-4 w-4 -mr-1" />
-        Back to Responses
-      </Button>
+      
+      <div
+          onClick={onBack}
+          className="flex items-center gap-1 cursor-pointer mb-6"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-base font-medium">Back</span>
+        </div>
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 md:col-span-5">
