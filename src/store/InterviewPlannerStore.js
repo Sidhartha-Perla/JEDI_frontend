@@ -29,9 +29,10 @@ const useInterviewPlannerStore = create(
             const interviewDetails = await _getInterviewByUuid(interviewId);
             set({interviewId, interviewDetails});
             await get().fetchMessages();
+            return true;
         }
         catch{
-            set({initError : true});
+            return false;
         }
     },
 

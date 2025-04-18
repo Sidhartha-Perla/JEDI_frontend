@@ -1,20 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'wouter';
+
+import { useToast } from '../hooks/use-toast';
 import AIChat from '../components/AIChat';
 import useUserInterviewSessionStore from '../store/UserInterviewSessionStore';
 
 export default function InterviewSessionPage() {
   const { uuid } = useParams();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
 
   const { initUserInterview } = useUserInterviewSessionStore();
 
   const userInterview = useUserInterviewSessionStore(state => state.userInterview);
+  const interviewDetails = useUserInterviewSessionStore(state => state.interviewDetails);
   
   useEffect(() => {
-    const init = async => {
-      initUserInterview(uuid);
+    const init = async () => {
+      const success = await initUserInterview(uuid);
       setIsLoading(false);
+      if(!success){
+        toast({
+          title: 'Error',
+          description: `Failed to load interview`,
+          variant: 'destructive',
+        });
+      }
     }
     init();
   }, []);
@@ -30,7 +41,7 @@ export default function InterviewSessionPage() {
   return (
     <main className="flex-1 overflow-auto pt-10 pb-6 px-6 h-screen">
       <header className="mb-8 text-center">
-        <h1 className="text-2xl font-semibold text-gray-900">{userInterview?.interview.title}</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{interviewDetails?.title}</h1>
       </header>
       
       <div className="max-w-2xl mx-auto h-[calc(100vh-200px)]">

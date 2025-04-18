@@ -4,12 +4,14 @@ import {
   getUserInterviewByUuid,
   getUserInterviewMessages,
   sendUserInterviewMessage,
+  getInterviewByUuid
 } from '../service/InterviewService';
 
 const useUserInterviewSessionStore = create(
   devtools((set, get) => ({
     // State
     userInterview: null,
+    interviewDetails: null,
     messages: [],
     initError: false,
 
@@ -24,22 +26,29 @@ const useUserInterviewSessionStore = create(
         try{
             const userInterview = await getUserInterviewByUuid({ userInterviewUuid });
             set({ userInterview });
-            await get().fetchMessages();
+            await get().fetchInterviewDetails(userInterview.interviewUuid);
+            await get().fetchMessages(userInterview.uuid);
+            return true;
         }
         catch{
-            set({initError : true});
+            return false;
         }
       }
     },
 
+    fetchInterviewDetails: async (interviewUuid) => {
+        const interviewDetails = await getInterviewByUuid(interviewUuid);
+        set({interviewDetails});
+    },
+
     resetStore : () => set({userInterview : null, messages : [], initError : false}),
     
-    fetchMessages: async () => {
+    fetchMessages: async (userInterviewUuid) => {
       const userInterview = get().userInterview;
       if (!userInterview) return;
       
       const messages = await getUserInterviewMessages({
-        userInterviewUuid: userInterview.uuid,
+        userInterviewUuid
       });
       
       set({ messages });
@@ -66,7 +75,7 @@ const useUserInterviewSessionStore = create(
       
       return conversation;
     },
-  }), { name: 'user-interview-session-store' })
+  }))
 );
 
 export default useUserInterviewSessionStore;

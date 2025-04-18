@@ -41,7 +41,6 @@ export default function InterviewPlanning() {
   } = useInterviewPlannerStore();
 
   const interviewDetails = useInterviewPlannerStore(state => state.interviewDetails);
-  const initError = useInterviewPlannerStore(state => state.initError);
   const updateError = useInterviewPlannerStore(state => state.updateError);
 
 
@@ -50,8 +49,8 @@ export default function InterviewPlanning() {
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      await initInterviewDetails(uuid);
-      if(initError){
+      const success = await initInterviewDetails(uuid);
+      if(!success){
         toast({
           title: 'Error',
           description: `Failed to load interview`,
@@ -177,14 +176,12 @@ export default function InterviewPlanning() {
               variant="default"
               onClick={handleCreateUserInterview}
               disabled={createLoading}
+              className="min-w-[140px]" // Fixed width to maintain size
             >
               {createLoading ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                  Creating...
-                </>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
               ) : (
-                'Create User Interview'
+                'Share Interview'
               )}
             </Button>
           

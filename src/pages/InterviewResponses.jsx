@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { useParams, useLocation } from 'wouter';
-import { Badge } from '../components/ui/badge';
+import { useState, useEffect } from 'react';
+import { useParams } from 'wouter';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { ChevronLeft } from 'lucide-react';
@@ -14,45 +13,7 @@ import {
   PaginationPrevious 
 } from '../components/ui/pagination';
 import AIChat from '../components/AIChat';
-import { useEffect } from 'react';
-
-/*
-const mockResponses = [
-  {
-    id: 1,
-    user: "john.doe@example.com",
-    summary: "Overall positive feedback about the product. User highlighted the ease of use and suggested improvements in documentation.",
-    tags: ["Positive", "Documentation", "UX"],
-    messages: [
-      { content: "How satisfied are you with our product?", isUser: false },
-      { content: "I'm very satisfied! The interface is intuitive.", isUser: true },
-      { content: "What features do you use most often?", isUser: false },
-      { content: "I mainly use the dashboard and reporting features.", isUser: true },
-      { content: "How satisfied are you with our product?", isUser: false },
-      { content: "I'm very satisfied! The interface is intuitive.", isUser: true },
-      { content: "What features do you use most often?", isUser: false },
-      { content: "I mainly use the dashboard and reporting features.", isUser: true },
-      { content: "How satisfied are you with our product?", isUser: false },
-      { content: "I'm very satisfied! The interface is intuitive.", isUser: true },
-      { content: "What features do you use most often?", isUser: false },
-      { content: "I mainly use the dashboard and reporting features.", isUser: true }
-    ]
-  },
-  {
-    id: 2,
-    user: "jane.smith@example.com",
-    summary: "Mixed feedback focusing on performance issues but praising customer support.",
-    tags: ["Performance", "Support", "Mixed"],
-    messages: [
-      { content: "How satisfied are you with our product?", isUser: false },
-      { content: "Mostly satisfied, but there are some performance issues.", isUser: true },
-      { content: "Could you elaborate on the performance issues?", isUser: false },
-      { content: "The system sometimes lags during peak hours.", isUser: true }
-    ]
-  },
-
-];
-*/
+import { SentimentTag, SentimentSwitch } from '../components/SentimentTag.jsx';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -61,7 +22,7 @@ function ResponseList({ responses, onSelectResponse }) {
   const totalPages = Math.ceil(responses.length / ITEMS_PER_PAGE);
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const paginatedResponses = responses.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const paginatedResponses = (responses).slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -77,10 +38,12 @@ function ResponseList({ responses, onSelectResponse }) {
               {response.summary}
             </p>
             <div className="flex flex-wrap gap-2">
-              {response.tags.map(tag => (
-                <Badge key={tag} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
+              {(response.tags ?? []).map(tag => (
+                <SentimentTag 
+                  key={tag.name} 
+                  name={tag.name} 
+                  sentiment={tag.sentiment}
+                />
               ))}
             </div>
           </Card>
@@ -136,19 +99,21 @@ function ResponseDetails({ response, onBack }) {
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-12 md:col-span-5">
             <h2 className="text-xl font-semibold mb-4">Response Summary</h2>
-            <div className="text-gray-600 mb-4">{response.uuid}</div>
+            <div className="font-medium mb-4">{response.uuid}</div>
             <div className="flex flex-wrap gap-2 mb-2">
-              {response.tags.map(tag => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
+              {(response.tags ?? []).map(tag => (
+                <SentimentTag 
+                  key={tag.name} 
+                  name={tag.name} 
+                  sentiment={tag.sentiment}
+                />
               ))}
             </div>
             <p className="text-gray-600 mb-4">{response.summary}</p>
         </div>
 
         <div className="col-span-12 md:col-span-7 h-[calc(105vh-160px)]">
-          <div className="border rounded-lg p-6 h-full flex flex-col">
+          <div className="h-full flex flex-col">
             <h2 className="text-xl font-semibold mb-4">Interview Chat</h2>
             <div className="flex-1 overflow-hidden">
               <AIChat type="response"/>
@@ -164,9 +129,10 @@ export default function InterviewResponses() {
   const { uuid } = useParams();
   const [selectedResponseId, setSelectedResponseId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sentimentFilter, setSentimentFilter] = useState(null);
 
   const { initResponseDetails, setTagFilter, setMessages, resetMessages } = useInterviewResponsesStore();
-
+  
   const interview = useInterviewResponsesStore((state) => state.interview);
   const interviewResponses = useInterviewResponsesStore((state) => state.interviewResponses);
   const filters = useInterviewResponsesStore((state) => state.filters);
@@ -180,12 +146,51 @@ export default function InterviewResponses() {
     init();
   }, []);
 
-  const filteredResponses = interviewResponses.filter(response => !filters.tag || response.tags.includes(filters.tag));
+  const getDominantSentiment = (tagName) => {
+    const tag = (interview.tags ?? []).find(t => t.name === tagName);
+    if (!tag) return 'neutral';
+    
+    const { sentiments } = tag;
+    const positiveCount = sentiments.positive || 0;
+    const negativeCount = sentiments.negative || 0;
+    const neutralCount = sentiments.neutral || 0;
+    
+    if (positiveCount >= negativeCount && positiveCount >= neutralCount) return 'positive';
+    if (negativeCount >= positiveCount && negativeCount >= neutralCount) return 'negative';
+    return 'neutral';
+  };
+
+  // Reset sentiment filter when tag filter changes
+  useEffect(() => {
+    if (filters.tag) {
+      setSentimentFilter(getDominantSentiment(filters.tag));
+    } else {
+      setSentimentFilter(null);
+    }
+  }, [filters.tag]);
+
+  const filteredResponses = interviewResponses.filter(response => {
+    // Filter by tag if present
+    if (filters.tag) {
+      const matchingTag = response.tags.find(tag => tag.name === filters.tag);
+      
+      // If tag doesn't exist in this response, filter it out
+      if (!matchingTag) return false;
+      
+      // If sentiment filter is active, check if it matches
+      if (sentimentFilter) {
+        return matchingTag.sentiment === sentimentFilter;
+      }
+      
+      return true;
+    }
+    
+    return true;
+  });
 
   const selectedResponse = interviewResponses.find(r => r.uuid === selectedResponseId);
 
   const handleSelectResponse = (response) => {
-    console.log("selected response: ", response);
     setSelectedResponseId(response.uuid);
     setMessages(response.uuid);
   }
@@ -194,6 +199,32 @@ export default function InterviewResponses() {
     setSelectedResponseId(null);
     resetMessages();
   }
+
+  const handleTagFilter = (tagName) => {
+    if (filters.tag === tagName) {
+      setTagFilter(null);
+      setSentimentFilter(null);
+    } else {
+      setTagFilter(tagName);
+      // Set the default sentiment filter to the dominant sentiment for this tag
+      setSentimentFilter(getDominantSentiment(tagName));
+    }
+  }
+
+  const handleSentimentFilter = (sentiment) => {
+    setSentimentFilter(sentiment);
+  }
+
+  // Counts for the currently selected tag
+  const getSentimentCounts = (tagName) => {
+    const tag = interview.tags.find(t => t.name === tagName);
+    if (!tag) return { positive: 0, negative: 0, neutral: 0 };
+    return {
+      positive: tag.sentiments.positive || 0,
+      negative: tag.sentiments.negative || 0,
+      neutral: tag.sentiments.neutral || 0
+    };
+  };
 
   if (isLoading) {
     return (
@@ -233,20 +264,33 @@ export default function InterviewResponses() {
               {interview.summary}
             </p>
 
-            <div className="mt-6">
+            <div className="mb-6">
               <div className="flex flex-wrap gap-2">
-                {Array.from(new Set(interviewResponses.flatMap(r => r.tags))).map(tag => (
-                  <Badge 
-                    key={tag}
-                    variant={filters.tag === tag ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => setTagFilter(tag)}
-                  >
-                    {tag}
-                  </Badge>
-                ))}
+                {interview.tags && interview.tags.map(tag => {
+                  const sentiment = getDominantSentiment(tag.name);
+                  return (
+                    <SentimentTag
+                      key={tag.name}
+                      name={tag.name}
+                      sentiment={sentiment}
+                      count={Object.values(tag.sentiments).reduce((sum, count) => sum + count, 0)}
+                      isSelected={filters.tag === tag.name}
+                      onClick={() => handleTagFilter(tag.name)}
+                    />
+                  );
+                })}
               </div>
             </div>
+
+            {filters.tag && (
+              <div className="mb-6">
+                <SentimentSwitch 
+                  activeSentiment={sentimentFilter}
+                  onChange={handleSentimentFilter}
+                  {...getSentimentCounts(filters.tag)}
+                />
+              </div>
+            )}
           </div>
         </header>
 

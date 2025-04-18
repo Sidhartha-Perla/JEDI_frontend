@@ -29,7 +29,7 @@ export default function InterviewTable() {
   const { initInterviews } = useInterviewStore();
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   const [sortConfig, setSortConfig] = useState({
     key: 'createdAt',
     direction: 'desc'
@@ -38,7 +38,7 @@ export default function InterviewTable() {
   const filters = useInterviewStore((state) => state.filters);
   const interviews = useInterviewStore((state) => state.interviews);
   const initError = useInterviewStore((state) => state.initError);
-  
+
   const [hoveredColumn, setHoveredColumn] = useState(null);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function InterviewTable() {
 
   const getSortedInterviews = () => {
     if (!interviews) return [];
-    
+
     let filteredData = interviews.filter((interview) => {
       if(filters.status && interview.status !== filters.status) return false;
       if (!filters.search) return true;
@@ -68,20 +68,20 @@ export default function InterviewTable() {
         interview.title.toLowerCase().includes(searchTerm)
       );
     });
-    
+
     return [...filteredData].sort((a, b) => {
       if (sortConfig.key === 'title') {
         return sortConfig.direction === 'asc' 
           ? a.title.localeCompare(b.title)
           : b.title.localeCompare(a.title);
       }
-      
+
       if (sortConfig.key === 'status') {
         return sortConfig.direction === 'asc' 
           ? a.status.localeCompare(b.status)
           : b.status.localeCompare(a.status);
       }
-      
+
       if (sortConfig.key === 'createdAt') {
         const dateA = new Date(a.createdAt || 0);
         const dateB = new Date(b.createdAt || 0);
@@ -89,7 +89,7 @@ export default function InterviewTable() {
           ? dateA - dateB
           : dateB - dateA;
       }
-      
+
       return 0;
     });
   };
@@ -138,7 +138,7 @@ export default function InterviewTable() {
     if (sortConfig.key !== columnKey) {
       return <ChevronUp className="h-4 w-4 opacity-0 group-hover:opacity-50" />;
     }
-    
+
     return sortConfig.direction === 'asc' 
       ? <ChevronUp className="h-4 w-4" />
       : <ChevronDown className="h-4 w-4" />;
@@ -164,8 +164,8 @@ export default function InterviewTable() {
         <div className="min-w-full">
           <div className="bg-gray-50 sticky top-0 z-10 px-6 py-4 rounded-t-xl">
             <div className="grid grid-cols-12 gap-4 font-medium text-gray-700">
-              <SortableHeader columnKey="title" title="Interview Title" colSpan="3" />
-              <SortableHeader columnKey="status" title="Status" colSpan="2" />
+              <SortableHeader columnKey="title" title="Interview Title" colSpan="5" />
+              <SortableHeader columnKey="status" title="Status" colSpan="3" />
               <SortableHeader columnKey="createdAt" title="Created" colSpan="2" />
               <div className="col-span-1">Responses</div>
               <div className="col-span-1"></div>
@@ -179,8 +179,8 @@ export default function InterviewTable() {
                 className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 border-t border-gray-100 cursor-pointer"
                 onClick={() => handleRowClick(interview.uuid)}
               >
-                <div className="col-span-3 font-medium truncate">{interview.title ?? ""}</div>
-                <div className="col-span-2">
+                <div className="col-span-5 font-medium truncate">{interview.title ?? ""}</div>
+                <div className="col-span-3">
                   <Badge variant="outline" className={statusColorMap[interview.status]}>
                     {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
                   </Badge>
@@ -206,7 +206,7 @@ export default function InterviewTable() {
           </div>
         </div>
       </div>
-      
+
       <div className="border-t border-gray-200 p-4">
         <Pagination>
           <PaginationContent>
@@ -216,7 +216,7 @@ export default function InterviewTable() {
                 disabled={currentPage === 1}
               />
             </PaginationItem>
-            
+
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <PaginationItem key={page}>
                 <PaginationLink
@@ -227,7 +227,7 @@ export default function InterviewTable() {
                 </PaginationLink>
               </PaginationItem>
             ))}
-            
+
             <PaginationItem>
               <PaginationNext 
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
