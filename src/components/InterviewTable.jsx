@@ -1,11 +1,11 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { useToast } from '../hooks/use-toast';
 import { Trash2, ChevronUp, ChevronDown } from 'lucide-react';
-import { useInterviewStore } from '../store/interviewStore';
-import { useState } from 'react';
+import useInterviewStore from '../store/InterviewStore';
+import { useState, useEffect } from 'react';
 import {
   Pagination,
   PaginationContent,
@@ -26,25 +26,28 @@ const ITEMS_PER_PAGE = 10;
 
 export default function InterviewTable() {
   const [, navigate] = useLocation();
-  const { filters } = useInterviewStore();
+  const { initInterviews } = useInterviewStore();
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   const [sortConfig, setSortConfig] = useState({
-    key: 'created_date',
+    key: 'createdAt',
     direction: 'desc'
   });
-  
+
+  const filters = useInterviewStore((state) => state.filters);
+  const interviews = useInterviewStore((state) => state.interviews);
+  const initError = useInterviewStore((state) => state.initError);
+
   const [hoveredColumn, setHoveredColumn] = useState(null);
-  
-  const { data: interviews, isLoading, error } = useQuery({
-    queryKey: ['/api/interviews', filters.status],
-    queryFn: async ({ queryKey }) => {
-      const statusParam = queryKey[1] ? `?status=${queryKey[1]}` : '';
-      const response = await fetch(`/api/interviews${statusParam}`);
-      if (!response.ok) throw new Error('Failed to fetch interviews');
-      return await response.json();
+
+  useEffect(() => {
+    const load = async () => {
+      await initInterviews();
+      setLoading(false);
     }
-  });
+    load();
+  }, []);
 
   const requestSort = (key) => {
     let direction = 'asc';
@@ -56,37 +59,37 @@ export default function InterviewTable() {
 
   const getSortedInterviews = () => {
     if (!interviews) return [];
-    
+
     let filteredData = interviews.filter((interview) => {
+      if(filters.status && interview.status !== filters.status) return false;
       if (!filters.search) return true;
       const searchTerm = filters.search.toLowerCase();
       return (
-        interview.title.toLowerCase().includes(searchTerm) ||
-        interview.objective.toLowerCase().includes(searchTerm)
+        interview.title.toLowerCase().includes(searchTerm)
       );
     });
-    
+
     return [...filteredData].sort((a, b) => {
       if (sortConfig.key === 'title') {
         return sortConfig.direction === 'asc' 
           ? a.title.localeCompare(b.title)
           : b.title.localeCompare(a.title);
       }
-      
+
       if (sortConfig.key === 'status') {
         return sortConfig.direction === 'asc' 
           ? a.status.localeCompare(b.status)
           : b.status.localeCompare(a.status);
       }
-      
-      if (sortConfig.key === 'created_date') {
-        const dateA = new Date(a.created_date || 0);
-        const dateB = new Date(b.created_date || 0);
+
+      if (sortConfig.key === 'createdAt') {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
         return sortConfig.direction === 'asc' 
           ? dateA - dateB
           : dateB - dateA;
       }
-      
+
       return 0;
     });
   };
@@ -99,7 +102,7 @@ export default function InterviewTable() {
   );
 
   const handleRowClick = (interviewId) => {
-    navigate(`/edit/${interviewId}`);
+    navigate(`/interview/${interviewId}`);
   };
 
   const handleDeleteClick = (e, interviewId) => {
@@ -107,7 +110,7 @@ export default function InterviewTable() {
     console.log('Delete clicked for interview:', interviewId);
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -115,10 +118,10 @@ export default function InterviewTable() {
     );
   }
 
-  if (error) {
+  if (initError) {
     return (
       <div className="bg-red-50 p-4 rounded-lg">
-        <p className="text-red-800">Error loading interviews: {error.message}</p>
+        <p className="text-red-800">Error loading interviews</p>
       </div>
     );
   }
@@ -135,7 +138,7 @@ export default function InterviewTable() {
     if (sortConfig.key !== columnKey) {
       return <ChevronUp className="h-4 w-4 opacity-0 group-hover:opacity-50" />;
     }
-    
+
     return sortConfig.direction === 'asc' 
       ? <ChevronUp className="h-4 w-4" />
       : <ChevronDown className="h-4 w-4" />;
@@ -161,10 +164,9 @@ export default function InterviewTable() {
         <div className="min-w-full">
           <div className="bg-gray-50 sticky top-0 z-10 px-6 py-4 rounded-t-xl">
             <div className="grid grid-cols-12 gap-4 font-medium text-gray-700">
-              <SortableHeader columnKey="title" title="Interview Title" colSpan="3" />
-              <div className="col-span-3">Objective</div>
-              <SortableHeader columnKey="status" title="Status" colSpan="2" />
-              <SortableHeader columnKey="created_date" title="Created" colSpan="2" />
+              <SortableHeader columnKey="title" title="Interview Title" colSpan="5" />
+              <SortableHeader columnKey="status" title="Status" colSpan="3" />
+              <SortableHeader columnKey="createdAt" title="Created" colSpan="2" />
               <div className="col-span-1">Responses</div>
               <div className="col-span-1"></div>
             </div>
@@ -173,28 +175,27 @@ export default function InterviewTable() {
           <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
             {paginatedInterviews.map((interview) => (
               <div
-                key={interview.id}
+                key={interview.uuid}
                 className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 border-t border-gray-100 cursor-pointer"
-                onClick={() => handleRowClick(interview.id)}
+                onClick={() => handleRowClick(interview.uuid)}
               >
-                <div className="col-span-3 font-medium truncate">{interview.title}</div>
-                <div className="col-span-3 truncate">{interview.objective}</div>
-                <div className="col-span-2">
+                <div className="col-span-5 font-medium truncate">{interview.title ?? ""}</div>
+                <div className="col-span-3">
                   <Badge variant="outline" className={statusColorMap[interview.status]}>
                     {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
                   </Badge>
                 </div>
                 <div className="col-span-2">
-                  {interview.created_date ? new Date(interview.created_date).toLocaleDateString() : 'N/A'}
+                  {new Date(interview.createdAt).toLocaleDateString()}
                 </div>
-                <div className="col-span-1">{interview.responses}</div>
+                <div className="col-span-1">{interview.numResponses ?? ''}</div>
                 <div className="col-span-1">
                   <div className="flex space-x-2 justify-end">
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-red-600 hover:text-red-900"
-                      onClick={(e) => handleDeleteClick(e, interview.id)}
+                      onClick={(e) => handleDeleteClick(e, interview.uuid)}
                     >
                       <Trash2 className="h-5 w-5" />
                     </Button>
@@ -205,7 +206,7 @@ export default function InterviewTable() {
           </div>
         </div>
       </div>
-      
+
       <div className="border-t border-gray-200 p-4">
         <Pagination>
           <PaginationContent>
@@ -215,7 +216,7 @@ export default function InterviewTable() {
                 disabled={currentPage === 1}
               />
             </PaginationItem>
-            
+
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <PaginationItem key={page}>
                 <PaginationLink
@@ -226,7 +227,7 @@ export default function InterviewTable() {
                 </PaginationLink>
               </PaginationItem>
             ))}
-            
+
             <PaginationItem>
               <PaginationNext 
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}

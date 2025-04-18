@@ -1,83 +1,79 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import {
+  addInterview as _addInterview,
+  getAllInterviews as _getAllInterviews,
+  getInterviewByUuid as _getInterviewByUuid,
+} from '../service/InterviewService';
 
-const initialDraft = {
-  title: 'Sample Title',
-  objective: 'Sample objective',
-  questions: ['Sample question'],
-  isAIMode: true,
-};
-
-export const useInterviewStore = create(
-  devtools(
-    (set) => ({
-      // Filters
-      filters: {
+const useInterviewStore = create(
+  devtools((set, get) => ({
+    interviews: [],
+    initError: false,
+    addInterviewError: false,
+    filters: {
         search: '',
         status: null,
-      },
-      setSearch: (search) =>
-        set((state) => ({
-          filters: { ...state.filters, search },
-        })),
-      setStatusFilter: (status) =>
-        set((state) => ({
-          filters: { ...state.filters, status },
+    },
+
+    //Getters
+    getInterviews: () => get().interviews,
+    getInitError: () => get().initError,
+    getFilters: () => get().filters,
+    getInterviewByUuid: (uuid) => 
+      get().interviews.find((interview) => interview.uuid === uuid),
+    
+    //Actions
+    initInterviews: async () => {
+        try{
+            await get().fetchInterviews();
+        }
+        catch{
+            set({initError : true});
+        }
+    },
+
+    
+    fetchInterviews: async () => {
+      const interviews = await _getAllInterviews();
+      set({ interviews });
+    },
+
+    setSearch : (search) =>
+        set(state => ({
+            filters : {...state.filters, search}
         })),
 
-      // Interview Draft
-      draft: { ...initialDraft },
-      setTitle: (title) =>
-        set((state) => ({
-          draft: { ...state.draft, title },
+    setStatusFilter : (status) =>
+        set(state => ({
+            filters : {...state.filters, status}
         })),
-      setObjective: (objective) =>
-        set((state) => ({
-          draft: { ...state.draft, objective },
-        })),
-      setQuestions: (questions) =>
-        set((state) => ({
-          draft: { ...state.draft, questions },
-        })),
-      addQuestion: (question = '') =>
-        set((state) => {
-          const newQuestions = [...state.draft.questions, question];
-          return { draft: { ...state.draft, questions: newQuestions } };
-        }),
-      removeQuestion: (index) =>
-        set((state) => {
-          const newQuestions = state.draft.questions.filter((_, i) => i !== index);
-          return {
-            draft: {
-              ...state.draft,
-              questions: newQuestions.length ? newQuestions : [''],
-            },
-          };
-        }),
-      updateQuestion: (index, text) =>
-        set((state) => {
-          const newQuestions = [...state.draft.questions];
-          newQuestions[index] = text;
-          return { draft: { ...state.draft, questions: newQuestions } };
-        }),
-      setAIMode: (isAIMode) =>
-        set((state) => ({
-          draft: { ...state.draft, isAIMode },
-        })),
-      resetDraft: () => set({ draft: { ...initialDraft } }),
+    
+    fetchInterviewByUuid: async (uuid) => {
+      let interview = get().interviews.find((interview) => interview.uuid === uuid);
+      if (interview == null) {
+        interview = await _getInterviewByUuid(uuid);
+        set((state) => ({ interviews: [...state.interviews, interview] }));
+      }
+      return interview;
+    },
+    
+    addInterview: async () => {
+      try{
+        const newInterview = await _addInterview();
+        console.log("passed");
+        set((state) => ({ interviews: [...state.interviews, newInterview] }));
+        return newInterview;
+      }
+      catch{
+        console.log("caught");
+        set({addInterviewError : true});
+      }
+    },
 
-      // AI Chat
-      messages: ["Hi, what type of Interview would you like to create?"],
-      addUserMessage: (content) =>
-        set((state) => ({
-          messages: [...state.messages, { isUser: true, content }],
-        })),
-      addAIMessage: (content) =>
-        set((state) => ({
-          messages: [...state.messages, { isUser: false, content }],
-        })),
-      clearMessages: () => set({ messages: [] }),
-    }),
-    { name: 'interview-store' }
-  )
+    resetAddInterviewError: () => set({addInterviewError : false}),
+  }))
 );
+
+
+export default useInterviewStore;

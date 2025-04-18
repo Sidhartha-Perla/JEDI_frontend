@@ -1,9 +1,8 @@
-/** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
   content: [
     "./index.html",
-    "./src/**/*.{js,jsx}",  // Make sure it's scanning .js and .jsx files
+    "./src/**/*.{js,jsx}",
   ],
   theme: {
     extend: {
@@ -81,10 +80,15 @@ module.exports = {
             height: "0",
           },
         },
+        blink: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        blink: "blink 1s infinite",
       },
     },
   },
